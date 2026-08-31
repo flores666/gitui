@@ -1,0 +1,169 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:GitUi"
+        xmlns:system="using:System"
+        x:Class="GitUi.MainWindow"
+        x:DataType="local:MainWindow"
+        Title="Git Changes"
+        Width="1180" Height="760"
+        MinWidth="760" MinHeight="520"
+        Background="#F7F7F8" FontSize="12">
+  <Window.Styles>
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="15" />
+      <Setter Property="BoxShadow" Value="0 4 18 0 #10000000" />
+    </Style>
+    <Style Selector="ListBox">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="ListBoxItem">
+      <Setter Property="Padding" Value="10,7" />
+      <Setter Property="Margin" Value="0,1" />
+      <Setter Property="CornerRadius" Value="9" />
+    </Style>
+    <Style Selector="ListBoxItem:selected">
+      <Setter Property="Background" Value="#ECECEC" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+      <Setter Property="Foreground" Value="#737373" />
+    </Style>
+    <Style Selector="GridSplitter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Cursor" Value="SizeWestEast" />
+    </Style>
+    <Style Selector="Button.add-project">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.add-project:pointerover">
+      <Setter Property="Background" Value="#ECECEC" />
+    </Style>
+    <Style Selector="Button.project-button">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.project-button:pointerover">
+      <Setter Property="Background" Value="#ECECEC" />
+    </Style>
+    <Style Selector="ScrollBar:vertical">
+      <Setter Property="Width" Value="16" />
+      <Setter Property="MinWidth" Value="16" />
+      <Setter Property="MaxWidth" Value="16" />
+      <Setter Property="ShowDelay" Value="0" />
+    </Style>
+    <Style Selector="ScrollBar:vertical /template/ Thumb">
+      <Setter Property="Width" Value="4" />
+      <Setter Property="MinWidth" Value="4" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="RenderTransform" Value="none" />
+    </Style>
+    <Style Selector="ScrollBar:vertical:pointerover /template/ Thumb">
+      <Setter Property="Width" Value="8" />
+    </Style>
+    <Style Selector="ScrollBar:horizontal">
+      <Setter Property="Height" Value="16" />
+      <Setter Property="MinHeight" Value="16" />
+      <Setter Property="MaxHeight" Value="16" />
+      <Setter Property="ShowDelay" Value="0" />
+    </Style>
+    <Style Selector="ScrollBar:horizontal /template/ Thumb">
+      <Setter Property="Height" Value="4" />
+      <Setter Property="MinHeight" Value="4" />
+      <Setter Property="VerticalAlignment" Value="Bottom" />
+      <Setter Property="RenderTransform" Value="none" />
+    </Style>
+    <Style Selector="ScrollBar:horizontal:pointerover /template/ Thumb">
+      <Setter Property="Height" Value="8" />
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,*">
+    <Border Background="White">
+      <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,3">
+        <Button Grid.Column="0" Content="Project" Click="ToggleProjects" ToolTip.Tip="Recent projects"
+                Classes="project-button" Padding="8,3" MinHeight="24" CornerRadius="7" BorderThickness="0" />
+        <TextBlock Grid.Column="1" Text="{Binding ProjectPath}" Classes="muted"
+                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="9,0" FontSize="11" />
+        <Button Grid.Column="2" Content="Refresh" Click="Refresh" IsVisible="{Binding HasProject}"
+                Padding="9,4" CornerRadius="8" Background="#ECECEC" BorderThickness="0" FontSize="11" />
+      </Grid>
+    </Border>
+
+    <Border Grid.RowSpan="2" ZIndex="9" IsVisible="{Binding ProjectsOpen}"
+            Background="Transparent" PointerPressed="CloseProjects" />
+
+    <Border Grid.RowSpan="2" ZIndex="10" IsVisible="{Binding ProjectsOpen}"
+            Width="270" MaxHeight="310" Margin="10,33,0,0" Padding="6"
+            HorizontalAlignment="Left" VerticalAlignment="Top"
+            Background="White" CornerRadius="10" BoxShadow="0 5 20 0 #24000000">
+      <Grid RowDefinitions="Auto,*">
+        <Button Content="+" Click="AddProject" ToolTip.Tip="Open project" Classes="add-project"
+                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                Padding="9,4" CornerRadius="7" BorderThickness="0" Focusable="False"
+                FontSize="14" FontWeight="Light" />
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding RecentProjects}" Margin="0,3,0,0">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="system:String">
+                <Button Content="{Binding .}" Click="OpenRecentProject"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                        Padding="9,6" CornerRadius="7" Background="Transparent" BorderThickness="0"
+                        FontSize="11" TextBlock.TextTrimming="CharacterEllipsis" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="270,12,*" Margin="12">
+      <Border Grid.Column="0" Classes="card" Padding="8" MinWidth="180">
+        <Grid RowDefinitions="Auto,*">
+          <StackPanel Margin="7,5,7,9">
+            <TextBlock Text="Changes" FontSize="15" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding Summary}" Classes="muted" Margin="0,3,0,0" />
+          </StackPanel>
+          <ListBox Grid.Row="1" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}"
+                   SelectionChanged="SelectFile">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="local:FileRow">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                  <Border Grid.Column="1" Background="{Binding Background}" CornerRadius="7" Padding="6,2" Margin="7,0,0,0">
+                    <TextBlock Text="{Binding Status}" Foreground="{Binding Foreground}" FontSize="10" />
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Grid>
+      </Border>
+
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" ResizeBehavior="PreviousAndNext" />
+
+      <Border Grid.Column="2" Classes="card" Padding="14" MinWidth="320">
+        <Grid RowDefinitions="Auto,*">
+          <StackPanel Margin="2,0,0,10">
+            <TextBlock Text="{Binding SelectedFile.Name, FallbackValue=Select a file}" FontSize="15" FontWeight="SemiBold" />
+            <TextBlock Text="File changes" Classes="muted" Margin="0,3,0,0" />
+          </StackPanel>
+          <Border Grid.Row="1" Background="#FAFAFA" CornerRadius="10">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+              <ItemsControl ItemsSource="{Binding DiffLines}" Margin="10,8">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="local:DiffLine">
+                    <Border Background="{Binding Background}" Padding="7,1" CornerRadius="3">
+                      <TextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
+                                 FontFamily="monospace" FontSize="11.5" TextWrapping="NoWrap" />
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Border>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</Window>
