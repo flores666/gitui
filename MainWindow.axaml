@@ -46,6 +46,22 @@
     <Style Selector="Button.project-button:pointerover">
       <Setter Property="Background" Value="#ECECEC" />
     </Style>
+    <Style Selector="Border.change-block">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Border.change-block:pointerover">
+      <Setter Property="Background" Value="#08000000" />
+      <Setter Property="Opacity" Value="0.88" />
+    </Style>
+    <Style Selector="Button.hunk-undo, TextBlock.hunk-info">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Border.change-block:pointerover Button.hunk-undo">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Border.change-block:pointerover TextBlock.hunk-info">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
     <Style Selector="ScrollBar:vertical">
       <Setter Property="Width" Value="16" />
       <Setter Property="MinWidth" Value="16" />
@@ -150,16 +166,29 @@
           </StackPanel>
           <Border Grid.Row="1" Background="#FAFAFA" CornerRadius="10">
             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-              <ItemsControl ItemsSource="{Binding DiffLines}" Margin="10,8">
+              <ItemsControl ItemsSource="{Binding DiffBlocks}" Margin="6,8">
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="local:DiffLine">
-                    <Border Background="{Binding Background}" Padding="7,1" CornerRadius="3">
-                      <Grid ColumnDefinitions="Auto,Auto">
-                        <TextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
-                                   FontFamily="monospace" FontSize="11.5" TextWrapping="NoWrap" />
-                        <Button Grid.Column="1" Content="Undo" Click="RevertChange" IsVisible="{Binding CanUndo}"
-                                Margin="10,0,0,0" Padding="6,2" FontSize="10" CornerRadius="6"
-                                Background="#F1F1F1" BorderThickness="0" />
+                  <DataTemplate x:DataType="local:DiffBlock">
+                    <Border Classes="change-block" CornerRadius="6" Margin="0,2" Padding="0,3">
+                      <Grid ColumnDefinitions="42,*">
+                        <Button Content="Undo" Click="RevertChange" IsVisible="{Binding CanUndo}"
+                                Classes="hunk-undo" Margin="3,17,5,0" Padding="4,2" FontSize="9"
+                                CornerRadius="7" Background="#ECECEC" BorderThickness="0"
+                                VerticalAlignment="Top" />
+                        <StackPanel Grid.Column="1">
+                          <TextBlock Text="{Binding Info}" IsVisible="{Binding CanUndo}" Classes="hunk-info"
+                                     Height="16" Foreground="#737373" FontSize="10.5" />
+                          <ItemsControl ItemsSource="{Binding Lines}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="local:DiffLine">
+                                <Border Background="{Binding Background}" Padding="7,1" CornerRadius="3">
+                                  <TextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
+                                             FontFamily="monospace" FontSize="11.5" TextWrapping="NoWrap" />
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
                       </Grid>
                     </Border>
                   </DataTemplate>

@@ -26,7 +26,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
     }
 
     internal ObservableCollection<FileRow> Files { get; } = [];
-    internal ObservableCollection<DiffLine> DiffLines { get; } = [];
+    internal ObservableCollection<DiffBlock> DiffBlocks { get; } = [];
     internal ObservableCollection<string> RecentProjects { get; } = [];
     internal FileRow? SelectedFile { get => _selectedFile; set => Set(ref _selectedFile, value); }
     public string ProjectPath { get => _projectPath; private set => Set(ref _projectPath, value); }
@@ -111,17 +111,17 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
 
     private async Task LoadDiffAsync()
     {
-        DiffLines.Clear();
+        DiffBlocks.Clear();
         if (_repository is null || SelectedFile is null)
             return;
 
-        foreach (GitDiffLine line in await _repository.GetDiffAsync(SelectedFile.File))
-            DiffLines.Add(DiffLine.From(line));
+        foreach (GitDiffBlock block in await _repository.GetDiffAsync(SelectedFile.File))
+            DiffBlocks.Add(DiffBlock.From(block));
     }
 
     private async void RevertChange(object? sender, RoutedEventArgs e)
     {
-        if (_repository is null || sender is not Button { DataContext: DiffLine { Hunk: { } hunk } })
+        if (_repository is null || sender is not Button { DataContext: DiffBlock { Hunk: { } hunk } })
             return;
 
         if (!await ConfirmRevertAsync())
@@ -220,7 +220,15 @@ internal sealed record FileRow(ChangedFile File, IBrush Foreground, IBrush Backg
     private static IBrush Brush(string color) => new SolidColorBrush(Color.Parse(color));
 }
 
-internal sealed record DiffLine(string Text, IBrush Foreground, IBrush Background, GitHunk? Hunk)
+internal sealed record DiffBlock(IReadOnlyList<DiffLine> Lines, GitHunk? Hunk, string? Info)
+{
+    public bool CanUndo => Hunk is not null;
+
+    public static DiffBlock From(GitDiffBlock block) =>
+        new(block.Lines.Select(DiffLine.From).ToArray(), block.Hunk, block.Info);
+}
+
+internal sealed record DiffLine(string Text, IBrush Foreground, IBrush Background)
 {
     private static readonly IBrush TextBrush = new SolidColorBrush(Color.Parse("#3F3F46"));
     private static readonly IBrush AddedText = new SolidColorBrush(Color.Parse("#426B4B"));
@@ -229,14 +237,10 @@ internal sealed record DiffLine(string Text, IBrush Foreground, IBrush Backgroun
     private static readonly IBrush RemovedBackground = new SolidColorBrush(Color.Parse("#F8ECEC"));
     private static readonly IBrush Transparent = Brushes.Transparent;
 
-    public bool CanUndo => Hunk is not null;
-
-    public static DiffLine From(GitDiffLine line) => line.Text switch
+    public static DiffLine From(string line) => line switch
     {
-        ['+', ..] when !line.Text.StartsWith("+++", StringComparison.Ordinal) =>
-            new(line.Text, AddedText, AddedBackground, line.Hunk),
-        ['-', ..] when !line.Text.StartsWith("---", StringComparison.Ordinal) =>
-            new(line.Text, RemovedText, RemovedBackground, line.Hunk),
-        _ => new(line.Text, TextBrush, Transparent, line.Hunk)
+        ['+', ..] => new(line, AddedText, AddedBackground),
+        ['-', ..] => new(line, RemovedText, RemovedBackground),
+        _ => new(line, TextBrush, Transparent)
     };
 }

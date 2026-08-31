@@ -33,19 +33,21 @@ internal sealed class GitRepository(string path)
         return files.OrderBy(file => file.Name, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
-    public async Task<IReadOnlyList<GitDiffLine>> GetDiffAsync(ChangedFile file)
+    public async Task<IReadOnlyList<GitDiffBlock>> GetDiffAsync(ChangedFile file)
     {
         if (file.Status == ChangeStatus.New)
-            return (await File.ReadAllLinesAsync(System.IO.Path.Combine(Path, file.Name)))
-                .Select((line, index) => new GitDiffLine($"+ {index + 1,4}  {line}", null))
-                .ToArray();
+            return [new GitDiffBlock(
+                (await File.ReadAllLinesAsync(System.IO.Path.Combine(Path, file.Name)))
+                    .Select((line, index) => $"+ {index + 1,4}  {line}").ToArray(),
+                null,
+                null)];
 
         string staged = await RunAsync("diff", "--cached", "--no-color", "--", file.Name);
         string working = await RunAsync("diff", "--no-color", "--", file.Name);
-        var lines = new List<GitDiffLine>();
-        AddPatch(lines, staged, true);
-        AddPatch(lines, working, false);
-        return lines;
+        var blocks = new List<GitDiffBlock>();
+        AddPatch(blocks, staged, true);
+        AddPatch(blocks, working, false);
+        return blocks;
     }
 
     public async Task RevertHunkAsync(GitHunk hunk)
@@ -91,7 +93,7 @@ internal sealed class GitRepository(string path)
         return standardOutput;
     }
 
-    private static void AddPatch(ICollection<GitDiffLine> output, string patch, bool isStaged)
+    private static void AddPatch(ICollection<GitDiffBlock> output, string patch, bool isStaged)
     {
         if (string.IsNullOrWhiteSpace(patch))
             return;
@@ -100,23 +102,22 @@ internal sealed class GitRepository(string path)
         int headerLength = Array.FindIndex(lines, line => line.StartsWith("@@ ", StringComparison.Ordinal));
         if (headerLength < 0)
         {
-            foreach (string line in lines)
-                output.Add(new GitDiffLine(line, null));
+            output.Add(new GitDiffBlock(lines, null, null));
             return;
         }
 
-        for (int index = 0; index < lines.Length; index++)
+        for (int index = headerLength; index < lines.Length;)
         {
-            GitHunk? hunk = null;
-            if (index >= headerLength && lines[index].StartsWith("@@ ", StringComparison.Ordinal))
-            {
-                int end = Array.FindIndex(lines, index + 1, line => line.StartsWith("@@ ", StringComparison.Ordinal));
-                if (end < 0)
-                    end = lines.Length;
-                string hunkPatch = string.Join('\n', lines[..headerLength].Concat(lines[index..end])) + "\n";
-                hunk = new GitHunk(hunkPatch, isStaged);
-            }
-            output.Add(new GitDiffLine(lines[index], hunk));
+            int end = Array.FindIndex(lines, index + 1, line => line.StartsWith("@@ ", StringComparison.Ordinal));
+            if (end < 0)
+                end = lines.Length;
+
+            string patchText = string.Join('\n', lines[..headerLength].Concat(lines[index..end])) + "\n";
+            string info = lines[index].Replace("@@", string.Empty, StringComparison.Ordinal).Trim();
+            if (isStaged)
+                info += " · staged";
+            output.Add(new GitDiffBlock(lines[(index + 1)..end], new GitHunk(patchText, isStaged), info));
+            index = end;
         }
     }
 
@@ -134,7 +135,7 @@ internal sealed class GitRepository(string path)
 }
 
 internal sealed record ChangedFile(string Name, ChangeStatus Status);
-internal sealed record GitDiffLine(string Text, GitHunk? Hunk);
+internal sealed record GitDiffBlock(IReadOnlyList<string> Lines, GitHunk? Hunk, string? Info);
 internal sealed record GitHunk(string Patch, bool IsStaged);
 
 internal enum ChangeStatus { New, Added, Modified, Deleted, Renamed, Staged }
