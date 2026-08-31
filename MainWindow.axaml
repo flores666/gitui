@@ -154,8 +154,13 @@
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="local:DiffLine">
                     <Border Background="{Binding Background}" Padding="7,1" CornerRadius="3">
-                      <TextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
-                                 FontFamily="monospace" FontSize="11.5" TextWrapping="NoWrap" />
+                      <Grid ColumnDefinitions="Auto,Auto">
+                        <TextBlock Text="{Binding Text}" Foreground="{Binding Foreground}"
+                                   FontFamily="monospace" FontSize="11.5" TextWrapping="NoWrap" />
+                        <Button Grid.Column="1" Content="Undo" Click="RevertChange" IsVisible="{Binding CanUndo}"
+                                Margin="10,0,0,0" Padding="6,2" FontSize="10" CornerRadius="6"
+                                Background="#F1F1F1" BorderThickness="0" />
+                      </Grid>
                     </Border>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>

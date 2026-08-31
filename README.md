@@ -1,13 +1,13 @@
 # Git Changes
 
-Легковесный просмотрщик локальных изменений Git на .NET 10 и Avalonia UI.
+Lightweight viewer for local Git changes, built with .NET 10 and Avalonia UI.
 
-## Запуск
+## Run
 
-Требуются .NET 10 SDK и Git.
+Requires the .NET 10 SDK and Git.
 
 ```bash
 dotnet run
 ```
 
-Выберите **Project → Open project…**, затем папку репозитория. Слева появятся изменённые файлы, справа — diff выбранного файла.
+Select **Project**, use the `+` action to open a repository, then choose a changed file. Its diff appears on the right. Each tracked diff hunk can be undone independently.

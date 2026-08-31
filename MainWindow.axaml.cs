@@ -115,8 +115,27 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         if (_repository is null || SelectedFile is null)
             return;
 
-        foreach (string line in (await _repository.GetDiffAsync(SelectedFile.File)).Split('\n'))
+        foreach (GitDiffLine line in await _repository.GetDiffAsync(SelectedFile.File))
             DiffLines.Add(DiffLine.From(line));
+    }
+
+    private async void RevertChange(object? sender, RoutedEventArgs e)
+    {
+        if (_repository is null || sender is not Button { DataContext: DiffLine { Hunk: { } hunk } })
+            return;
+
+        if (!await ConfirmRevertAsync())
+            return;
+
+        try
+        {
+            await _repository.RevertHunkAsync(hunk);
+            await LoadChangesAsync();
+        }
+        catch (Exception exception)
+        {
+            await ShowErrorAsync(exception.Message);
+        }
     }
 
     private async Task ShowErrorAsync(string message)
@@ -139,6 +158,32 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             }
         };
         await dialog.ShowDialog(this);
+    }
+
+    private async Task<bool> ConfirmRevertAsync()
+    {
+        var dialog = new Window { Title = "Undo change", Width = 400, Height = 170, CanResize = false };
+        var cancel = new Button { Content = "Cancel" };
+        var undo = new Button { Content = "Undo", Background = new SolidColorBrush(Color.Parse("#F8E7E8")) };
+        cancel.Click += (_, _) => dialog.Close(false);
+        undo.Click += (_, _) => dialog.Close(true);
+        dialog.Content = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(20),
+            Spacing = 16,
+            Children =
+            {
+                new TextBlock { Text = "Undo this change? This action cannot be recovered by the application." },
+                new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Horizontal,
+                    Spacing = 8,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                    Children = { cancel, undo }
+                }
+            }
+        };
+        return await dialog.ShowDialog<bool>(this);
     }
 
     private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
@@ -175,7 +220,7 @@ internal sealed record FileRow(ChangedFile File, IBrush Foreground, IBrush Backg
     private static IBrush Brush(string color) => new SolidColorBrush(Color.Parse(color));
 }
 
-internal sealed record DiffLine(string Text, IBrush Foreground, IBrush Background)
+internal sealed record DiffLine(string Text, IBrush Foreground, IBrush Background, GitHunk? Hunk)
 {
     private static readonly IBrush TextBrush = new SolidColorBrush(Color.Parse("#3F3F46"));
     private static readonly IBrush AddedText = new SolidColorBrush(Color.Parse("#426B4B"));
@@ -184,10 +229,14 @@ internal sealed record DiffLine(string Text, IBrush Foreground, IBrush Backgroun
     private static readonly IBrush RemovedBackground = new SolidColorBrush(Color.Parse("#F8ECEC"));
     private static readonly IBrush Transparent = Brushes.Transparent;
 
-    public static DiffLine From(string text) => text switch
+    public bool CanUndo => Hunk is not null;
+
+    public static DiffLine From(GitDiffLine line) => line.Text switch
     {
-        ['+', ..] when !text.StartsWith("+++", StringComparison.Ordinal) => new(text, AddedText, AddedBackground),
-        ['-', ..] when !text.StartsWith("---", StringComparison.Ordinal) => new(text, RemovedText, RemovedBackground),
-        _ => new(text, TextBrush, Transparent)
+        ['+', ..] when !line.Text.StartsWith("+++", StringComparison.Ordinal) =>
+            new(line.Text, AddedText, AddedBackground, line.Hunk),
+        ['-', ..] when !line.Text.StartsWith("---", StringComparison.Ordinal) =>
+            new(line.Text, RemovedText, RemovedBackground, line.Hunk),
+        _ => new(line.Text, TextBrush, Transparent, line.Hunk)
     };
 }

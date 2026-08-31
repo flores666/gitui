@@ -21,6 +21,7 @@ Lightweight desktop viewer for local Git changes. Built with C#, .NET 10, and Av
 - The changes and diff panels are resized with the invisible splitter between them.
 - Status colors: green added/new, amber modified, red deleted, blue renamed, purple staged.
 - Added and removed diff lines use muted green and red backgrounds.
+- Each tracked diff hunk has an `Undo` action with confirmation; untracked files are never deleted.
 - Scrollbar hit areas are 16 px; visible thumbs are 4 px normally and 8 px on immediate hover.
 - Clicking outside the in-window project list closes it.
 
